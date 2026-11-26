@@ -3,6 +3,7 @@
 #wmill
 
 import json
+import logging
 import os
 import time
 from typing import Any
@@ -10,6 +11,13 @@ from typing import Any
 import docker
 import wmill
 from docker.errors import DockerException, NotFound
+
+
+logging.basicConfig(
+    level=os.environ.get("LOG_LEVEL", "INFO").upper(),
+    format="%(asctime)s %(levelname)s %(name)s %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 
 def main(
@@ -24,18 +32,22 @@ def main(
     - Creates an Apple Wallet pass and validates the returned PKPass ZIP.
     """
 
+    logger.info("Starting PKPass smoke test for container %s", container_id)
     try:
         api_key = wmill.get_variable("f/Image_Testing/pkpass_api_key")
     except Exception:
+        logger.error("Failed to retrieve the PKPass API key from Windmill")
         raise ValueError("ERROR: secrets: pkpass api key secret is required and missing")
 
     host = os.environ.get("DOCKER_HOST") or "tcp://docker-test-daemon:2375"
+    logger.debug("Connecting to Docker and locating container %s", container_id)
     client = docker.DockerClient(base_url=host, tls=False, timeout=30)
 
     try:
         client.ping()
         container = client.containers.get(container_id)
     except (DockerException, NotFound) as error:
+        logger.error("Unable to access container %s (%s)", container_id, type(error).__name__)
         return {
             "finished_successful": "false",
             "error_message": f"Unable to access container: {error}",
@@ -45,6 +57,7 @@ def main(
     container_name = container.name or container_id
 
     if container.status != "running":
+        logger.error("Container %s is not running (status: %s)", container_id, container.status)
         return {
             "finished_successful": "false",
             "container_id": container_id,
@@ -53,6 +66,7 @@ def main(
         }
 
     if api_key is None:
+        logger.debug("Looking for an API key in the container configuration")
         for entry in container.attrs.get("Config", {}).get("Env", []) or []:
             name, separator, value = entry.partition("=")
             if separator and name == "API_KEY":
@@ -60,6 +74,7 @@ def main(
                 break
 
     if not api_key:
+        logger.error("No API key is available for the smoke test")
         return {
             "finished_successful": "false",
             "container_id": container_id,
@@ -91,10 +106,12 @@ except Exception as error:
     deadline = time.monotonic() + max(timeout_seconds, 1)
     last_health_error = "No health response"
 
+    logger.info("Waiting for container %s health check", container_id)
     while time.monotonic() < deadline:
         container.reload()
 
         if container.status != "running":
+            logger.error("Container %s stopped before becoming healthy (status: %s)", container_id, container.status)
             return {
                 "finished_successful": "false",
                 "container_id": container_id,
@@ -112,14 +129,18 @@ except Exception as error:
 
             if result.exit_code == 0:
                 health = parse_json_output(output)
+                logger.info("Container %s health check passed", container_id)
                 break
 
             last_health_error = output.strip() or "Health check failed"
+            logger.debug("Health check failed for container %s (exit code: %s)", container_id, result.exit_code)
         except DockerException as error:
             last_health_error = str(error)
+            logger.debug("Health check exec failed for container %s (%s)", container_id, type(error).__name__)
 
         time.sleep(1)
     else:
+        logger.error("Timed out waiting for container %s health check", container_id)
         return {
             "finished_successful": "false",
             "container_id": container_id,
@@ -219,6 +240,7 @@ except Exception as error:
     raise SystemExit(1)
 """
 
+    logger.info("Checking authentication and PKPass generation for container %s", container_id)
     try:
         result = container.exec_run(
             ["python", "-c", pass_script],
@@ -229,6 +251,7 @@ except Exception as error:
         output = decode_exec_output(result.output)
         details = parse_json_output(output)
     except DockerException as error:
+        logger.error("Docker exec smoke test failed for container %s (%s)", container_id, type(error).__name__)
         return {
             "finished_successful": "false",
             "container_id": container_id,
@@ -237,6 +260,7 @@ except Exception as error:
         }
 
     if result.exit_code != 0:
+        logger.error("PKPass smoke test failed for container %s (exit code: %s)", container_id, result.exit_code)
         return {
             "finished_successful": "false",
             "container_id": container_id,
@@ -248,6 +272,7 @@ except Exception as error:
             ),
         }
 
+    logger.info("PKPass smoke test passed for container %s", container_id)
     return {
         "finished_successful": "true",
         "container_id": container_id,
