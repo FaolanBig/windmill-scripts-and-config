@@ -1,0 +1,214 @@
+summary: Validate pkpass builder image api functionality
+description: |-
+  Repo: https://github.com/FaolanBig/pkpass_builder_api_host
+  Image: ghcr.io/faolanbig/pkpass-builder-api-host:latest
+value:
+  modules:
+    - id: g
+      value:
+        path: f/Image_Testing/create_docker_container
+        type: script
+        is_trigger: false
+        input_transforms:
+          ct_image:
+            expr: '`${flow_env.IMAGE_REGISTRY}:${flow_input["Image Tag"]}`'
+            type: javascript
+          ct_ports:
+            type: static
+            value: null
+          ct_labels:
+            type: static
+            value:
+              managed-by: windmill
+              windmill.deployment.auto: "true"
+          ct_command:
+            type: static
+            value: ""
+          ct_cap_drop:
+            type: static
+            value:
+              - ALL
+          ct_nano_cpus:
+            type: static
+            value: 1000000000
+          ct_pids_limit:
+            type: static
+            value: 256
+          ct_auto_remove:
+            type: static
+            value: false
+          ct_environment:
+            type: static
+            value:
+              API_KEY: $var:f/Image_Testing/pkpass_api_key
+              PKPASS_SIGNING_MODE: unsigned
+          ct_memory_limit:
+            type: static
+            value: 128m
+          ct_security_opt:
+            type: static
+            value:
+              - no-new-privileges:true
+      summary: create docker container
+      timeout:
+        type: static
+        value: 300
+      continue_on_error: false
+    - id: b
+      mock:
+        enabled: false
+        preview_only: true
+        return_value:
+          example: value
+      value:
+        type: branchone
+        default: []
+        branches:
+          - expr: flow_input["Testing Extend"]=="smoke_test"
+            modules:
+              - id: i
+                value:
+                  path: f/Image_Testing/pkpass_smoke_test
+                  type: script
+                  is_trigger: false
+                  input_transforms:
+                    container_id:
+                      expr: "`${results.g.container_id}`"
+                      type: javascript
+                    timeout_seconds:
+                      type: static
+                      value: 60
+                summary: pkpass_smoke_test
+                timeout:
+                  type: static
+                  value: 30
+                continue_on_error: false
+            summary: ""
+            parallel: true
+            skip_failure: false
+          - expr: flow_input["Testing Extend"]=="full_test"
+            modules:
+              - id: k
+                value:
+                  path: f/Image_Testing/pkpass_full_test
+                  type: script
+                  is_trigger: false
+                  input_transforms:
+                    container_id:
+                      expr: "`${results.g.container_id}`"
+                      type: javascript
+                    timeout_seconds:
+                      type: static
+                      value: 250
+                summary: pkpass full test
+                timeout:
+                  type: static
+                  value: 300
+                continue_on_error: false
+            summary: ""
+            parallel: true
+            skip_failure: false
+      summary: ""
+    - id: h
+      value:
+        path: f/Image_Testing/remove_docker_container
+        type: script
+        is_trigger: false
+        input_transforms:
+          timeout:
+            type: static
+            value: 30
+          image_id:
+            expr: "`${results.g.image_id}`"
+            type: javascript
+          container_id:
+            expr: "`${results.g.container_id}`"
+            type: javascript
+          only_dangling_images:
+            type: static
+            value: true
+      summary: remove docker container
+      timeout:
+        type: static
+        value: 300
+      continue_on_error: false
+    - id: b2
+      mock:
+        enabled: false
+        preview_only: true
+        return_value:
+          example: value
+      value:
+        type: branchone
+        default: []
+        branches:
+          - expr: flow_input["Testing Extend"]=="smoke_test"
+            modules:
+              - id: j
+                value:
+                  path: f/Image_Testing/pkpass_evaluate_smoke_test
+                  type: script
+                  is_trigger: false
+                  input_transforms:
+                    smoke_test_result:
+                      expr: results.i
+                      type: javascript
+                summary: pkpass evaluate smoke test
+                timeout:
+                  type: static
+                  value: 30
+                continue_on_error: false
+            summary: ""
+            parallel: true
+            skip_failure: false
+          - expr: flow_input["Testing Extend"]=="full_test"
+            modules:
+              - id: l
+                value:
+                  path: f/Image_Testing/pkpass_evaluate_full_test
+                  type: script
+                  is_trigger: false
+                  input_transforms:
+                    extended_test_result:
+                      expr: results.k
+                      type: javascript
+                summary: pkpass evaluate full test
+            summary: ""
+            parallel: true
+            skip_failure: false
+      summary: ""
+  notes: []
+  flow_env:
+    IMAGE_REGISTRY: ghcr.io/faolanbig/pkpass-builder-api-host
+    CONTAINER_PORT_EXTERNAL: "40000"
+  chat_input_enabled: false
+  groups: []
+schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  properties:
+    Testing Extend:
+      default: smoke_test
+      nullable: false
+      type: string
+      enum:
+        - smoke_test
+        - full_test
+      description: ""
+      enumLabels:
+        smoke_test: Smoke Test
+        full_test: Full Test
+      title: Testing Extend
+      disableCreate: true
+    Image Tag:
+      default: latest
+      nullable: false
+      type: string
+      description: ""
+      placeholder: Docker image tag to test
+  required:
+    - Image Tag
+    - Testing Extend
+  order:
+    - Testing Extend
+    - Image Tag
+  type: object
