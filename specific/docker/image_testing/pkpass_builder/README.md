@@ -38,3 +38,12 @@ reported as skipped. An unsigned package cannot be installed in Apple Wallet,
 so a successful result is not proof of device compatibility or a valid
 signature. The existing smoke-test evaluator expects the smoke-test result
 shape and should not be used to evaluate this extended report.
+
+To evaluate the extended report, add `evaluate_pkpass_extended_test.py` as the
+final flow step and map `extended_test_result` to the extended-test step's full
+result, for example `results.<extended_test_step_id>`. Use the actual step ID.
+The evaluator requires every current extended check to pass and preserves the
+separate `skipped` list in its result. It returns failures as data rather than
+failing the Windmill flow, and does not assess cleanup. Configure flow error
+handling separately for steps that raise exceptions or are skipped. If the
+extended test's check names change, update the evaluator's required list.
