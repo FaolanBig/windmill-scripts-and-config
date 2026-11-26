@@ -20,7 +20,6 @@ def main(
     ct_command: str | None = None,
     ct_environment: dict[str, str] | None = None,
     ct_ports: dict[str, Any] | None = None,
-    ct_name = f"windmill-ct-{uuid.uuid4().hex}",
     ct_labels = {
         "managed-by": "windmill",
         "windmill.deployment.auto": "true"
@@ -56,10 +55,10 @@ def main(
         logger.info("Pulling Docker image %s", ct_image)
         ct_pulled_image = client.images.pull(ct_image)
 
-        logger.info("Starting Docker container %s", ct_name)
+        logger.info("Starting Docker container %s", str(uuid.uuid4().hex))
         ct_container = client.containers.run(
             image=ct_pulled_image,
-            name=ct_name,
+            name=str(uuid.uuid4().hex),
             command=ct_command,
             environment=ct_environment,
             ports=ct_ports,
