@@ -16,3 +16,25 @@ Windmill flow as failed. The evaluator does not assess container cleanup.
 
 The final step can only evaluate results that reach it. Configure flow error
 handling and cleanup separately for steps that raise exceptions or are skipped.
+
+## Extended PKPass test
+
+Run `pkpass_extended_test.py` after creating the API container and pass it the
+creation step's `container_id`. Like the smoke test, it obtains the API key
+from the Windmill variable `f/Image_Testing/pkpass_api_key` and uses Docker
+exec to reach the API at `127.0.0.1:8000` inside the container; no port needs
+to be published. `timeout_seconds` controls the health-check wait. The
+container must have Python and Pillow, as the API host image does. Set
+`PKPASS_SIGNING_MODE=unsigned` on the container if signing certificates are
+not available.
+
+The result contains `finished_successful`, `error_message`, and individual
+`checks` with pass/fail details. It checks API authentication and input
+validation, ZIP and image integrity, pass and vCard fields, optional fields,
+aliases, profile thumbnails, and unique serial numbers. If present, a manifest
+is checked against the archive files. Signature verification, actual Apple
+Wallet installation, and decoding the generated QR image are explicitly
+reported as skipped. An unsigned package cannot be installed in Apple Wallet,
+so a successful result is not proof of device compatibility or a valid
+signature. The existing smoke-test evaluator expects the smoke-test result
+shape and should not be used to evaluate this extended report.
