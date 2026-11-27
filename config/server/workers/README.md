@@ -44,6 +44,34 @@ docker compose --env-file worker.env -f docker-compose.worker.yml up -d
 
 Workers do not mount `/srv/db`; they connect to PostgreSQL over the network.
 
+### Running C# jobs
+
+The standard worker stack defaults to `windmill-full`, which includes the .NET
+SDK required by C# jobs. Keep its image version aligned with the master
+Windmill version. Both services in this stack use `WM_IMAGE`; the full image is
+larger than the regular image.
+
+Existing `worker.env` files are not changed when the example is updated. On
+each worker eligible to run C# jobs, set the following in `worker.env`, using
+the version deployed on the master:
+
+```dotenv
+WM_IMAGE=ghcr.io/windmill-labs/windmill-full:1.883.0
+```
+
+For example, on the `pve-standard` worker, recreate the stack and verify the
+runtime:
+
+```sh
+docker compose --env-file worker.env -f docker-compose.worker.yml pull
+docker compose --env-file worker.env -f docker-compose.worker.yml up -d
+docker compose --env-file worker.env -f docker-compose.worker.yml exec windmill_worker /usr/bin/dotnet --info
+```
+
+If a C# job can be routed to other worker groups, those workers also need the
+full image, or the job must be routed to a group that has it. An exported
+`WM_IMAGE` shell variable takes precedence over the value in `worker.env`.
+
 ## Docker-test worker
 
 A separate Docker-test worker provides Docker access to a dedicated worker pool without mounting the worker host's Docker socket or publishing Docker TCP on the Proxmox network.

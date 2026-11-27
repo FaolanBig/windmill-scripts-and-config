@@ -7,7 +7,7 @@ x-logging: &default-logging
 
 services:
   windmill_worker:
-    image: "${WM_IMAGE:-ghcr.io/windmill-labs/windmill:1.883.0}"
+    image: "${WM_IMAGE:-ghcr.io/windmill-labs/windmill-full:1.883.0}"
     pull_policy: missing
     restart: unless-stopped
     privileged: true
@@ -24,7 +24,7 @@ services:
     logging: *default-logging
 
   windmill_worker_native:
-    image: "${WM_IMAGE:-ghcr.io/windmill-labs/windmill:1.883.0}"
+    image: "${WM_IMAGE:-ghcr.io/windmill-labs/windmill-full:1.883.0}"
     pull_policy: missing
     restart: unless-stopped
     environment:
