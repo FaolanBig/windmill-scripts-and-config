@@ -223,14 +223,14 @@ value:
       summary: ""
     - id: o
       value:
-        path: u/carl/input_returner_json
+        path: u/carl/input_returner_go_string
         type: script
         is_trigger: false
         input_transforms:
-          in_input:
-            expr: results.j ?? results.l
+          input_string:
+            expr: JSON.stringify(results.j ?? results.l)
             type: javascript
-      summary: Return Input (JSON)
+      summary: Return Input (JSON) written in GO
   notes: []
   flow_env:
     IMAGE_REGISTRY: ghcr.io/faolanbig/pkpass-builder-api-host
