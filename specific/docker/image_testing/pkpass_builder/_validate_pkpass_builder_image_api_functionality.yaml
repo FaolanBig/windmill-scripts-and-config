@@ -177,6 +177,60 @@ value:
             parallel: true
             skip_failure: false
       summary: ""
+    - id: n
+      value:
+        type: branchone
+        default: []
+        branches:
+          - expr: (flow_input["Testing Extend"] == "smoke_test" &&
+              results.i?.finished_successful == "false") || (flow_input["Testing
+              Extend"] == "full_test" && results.k?.finished_successful ==
+              "false")
+            modules:
+              - id: m
+                value:
+                  path: hub/28200/smtp/send_email
+                  type: script
+                  is_trigger: false
+                  input_transforms:
+                    content:
+                      expr: "`${results.j ? results.j.error_message : results.l.error_message}\r
+
+                        \r
+
+                        ###################\r
+
+                        \r
+
+                        ${JSON.stringify(results.k ?? results.i)}\\``"
+                      type: javascript
+                    subject:
+                      type: static
+                      value: TEST FAILED FOR PKPASS BUILDER
+                    smtp_res:
+                      type: static
+                      value: $res:u/carl/SMTP_noreply_at_hyprvoid_dot_de
+                    to_email:
+                      type: static
+                      value: carl@oettinger.cloud
+                    from_email:
+                      type: static
+                      value: noreply@hyprvoid.de
+                summary: Send Email (smtp)
+            summary: ""
+            parallel: true
+            skip_failure: false
+      summary: ""
+    - id: o
+      value:
+        path: u/carl/input_returner_json
+        type: script
+        is_trigger: false
+        input_transforms:
+          in_input:
+            expr: results.j ?? results.l
+            type: javascript
+      summary: Return Input (JSON)
   notes: []
   flow_env:
     IMAGE_REGISTRY: ghcr.io/faolanbig/pkpass-builder-api-host
@@ -212,3 +266,4 @@ schema:
     - Testing Extend
     - Image Tag
   type: object
+tag: pve-docker
